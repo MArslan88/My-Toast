@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.library'
+    id 'maven-publish'
 }
 
 android {
@@ -22,6 +23,24 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+publishing {
+    publications {
+        release(MavenPublication) {
+            //from components.release
+            from components.findByName('release')
+            groupId = 'com.github.MArslan88'
+            artifactId = 'My-Toast'
+            version = '1.0.0'
+        }
+
+    }
+    repositories {
+        maven {
+            name = "My-Toast"
+            url = uri("https://maven.pkg.github.com/MArslan88/My-Toast")
+        }
     }
 }
 
