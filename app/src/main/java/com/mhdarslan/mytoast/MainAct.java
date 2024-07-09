@@ -39,7 +39,7 @@ public class MainAct extends AppCompatActivity {
 
         // Instantiate the RequestQueue.
         RequestQueue queue = Volley.newRequestQueue(this);
-        String url = "https://github.com/MArslan88/My-Toast/blob/main/app/src/main/res/raw/myUpdate.json";
+        String url = "https://raw.githubusercontent.com/MArslan88/My-Toast/main/app/src/main/res/raw/my_update.json";
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 new Response.Listener<String>() {
@@ -47,6 +47,7 @@ public class MainAct extends AppCompatActivity {
                     public void onResponse(String response) {
 
                         try {
+                            System.out.println("Response: " + response);
                             JSONObject jsonObject = new JSONObject(response);
                             int versionCode = jsonObject.getInt("versionCode");
                             String versionName = jsonObject.getString("versionName");
