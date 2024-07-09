@@ -47,7 +47,6 @@ public class MainAct extends AppCompatActivity {
                     public void onResponse(String response) {
 
                         try {
-                            System.out.println("Response: " + response);
                             JSONObject jsonObject = new JSONObject(response);
                             int versionCode = jsonObject.getInt("versionCode");
                             String versionName = jsonObject.getString("versionName");
