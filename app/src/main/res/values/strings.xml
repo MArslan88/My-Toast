@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">My Toast</string>
+    <string name="version_number">Version: 1.0</string>
 </resources>
