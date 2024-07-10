@@ -4,13 +4,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 
 import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -85,6 +89,8 @@ public class MainAct extends AppCompatActivity {
                             System.out.println("APK URL: " + apkUrl);
                             if(myVersionCode < versionCode){
                                 Toast.makeText(MainAct.this, "Update is Available", Toast.LENGTH_SHORT).show();
+                                downloadApk(MainAct.this, apkUrl, "version_2.0");
+
                             }else {
                                 Toast.makeText(MainAct.this, "Your app is already updated", Toast.LENGTH_SHORT).show();
                             }
@@ -107,42 +113,52 @@ public class MainAct extends AppCompatActivity {
 
 
     public void downloadApk(Context context, String url, String subPath) {
+//        String url = "https://github.com/MArslan88/My-Toast/raw/main/downloads/apks/L3-Craft-MenuBoard-V4.apk";
+        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+        request.setTitle("Downloading APK");
+        request.setDescription("Downloading the updated APK.");
+        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, subPath + ".apk");
+        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
 
-        // Instantiate the RequestQueue.
-        RequestQueue queue = Volley.newRequestQueue(context);
+        DownloadManager downloadManager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+        long downloadId = downloadManager.enqueue(request);
 
-        // Request a string response from the provided URL.
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        // Convert the response to a Uri
-                        Uri uri = Uri.parse(url);
-
-                        // Download the APK
-                        DownloadManager.Request request = new DownloadManager.Request(uri);
-                        request.setTitle("Downloading APK");
-                        request.setDescription("Downloading the updated APK.");
-                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, subPath +".apk");
-                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                        DownloadManager downloadManager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
-                        downloadManager.enqueue(request);
-                    }
-                }, new Response.ErrorListener() {
+        // Register receiver to listen for when the download is complete
+        context.registerReceiver(new BroadcastReceiver() {
             @Override
-            public void onErrorResponse(VolleyError error) {
-                // Handle error
-                error.printStackTrace();
+            public void onReceive(Context context, Intent intent) {
+                long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                if (downloadId == id) {
+                    DownloadManager.Query query = new DownloadManager.Query();
+                    query.setFilterById(downloadId);
+                    Cursor cursor = downloadManager.query(query);
+                    if (cursor.moveToFirst()) {
+                        int columnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+                        if (DownloadManager.STATUS_SUCCESSFUL == cursor.getInt(columnIndex)) {
+                            // Download is complete, install the APK
+                            installApk(context, subPath);
+                        } else {
+                            Toast.makeText(context, "Download failed", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
             }
-        });
-
-        // Add the request to the RequestQueue.
-        queue.add(stringRequest);
+        }, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
     }
 
+//    private void installingProcess() {
+//        new Handler().postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                installApk(MainAct.this);
+//            }
+//        },15000);
+//
+//    }
 
-    public void installApk(Context context) {
-        String filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/L3-Craft-MenuBoard-V4.apk";
+
+    public void installApk(Context context, String subPath) {
+        String filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) +"/"+ subPath +".apk";
         File file = new File(filePath);
         if (file.exists()) {
             Uri uri;
@@ -155,6 +171,8 @@ public class MainAct extends AppCompatActivity {
             intent.setDataAndType(uri, "application/vnd.android.package-archive");
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
             context.startActivity(intent);
+        } else {
+            Toast.makeText(context, "Downloaded APK file not found", Toast.LENGTH_SHORT).show();
         }
     }
 }
