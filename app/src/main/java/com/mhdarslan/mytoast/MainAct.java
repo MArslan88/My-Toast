@@ -89,7 +89,7 @@ public class MainAct extends AppCompatActivity {
                             System.out.println("APK URL: " + apkUrl);
                             if(myVersionCode < versionCode){
                                 Toast.makeText(MainAct.this, "Update is Available", Toast.LENGTH_SHORT).show();
-                                downloadApk(MainAct.this, apkUrl, "version_2.0");
+                                downloadApk(MainAct.this, apkUrl, "version_3.0");
 
                             }else {
                                 Toast.makeText(MainAct.this, "Your app is already updated", Toast.LENGTH_SHORT).show();
@@ -113,6 +113,7 @@ public class MainAct extends AppCompatActivity {
 
 
     public void downloadApk(Context context, String url, String subPath) {
+        Toast.makeText(context, "Downloading", Toast.LENGTH_SHORT).show();
 //        String url = "https://github.com/MArslan88/My-Toast/raw/main/downloads/apks/L3-Craft-MenuBoard-V4.apk";
         DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
         request.setTitle("Downloading APK");
@@ -146,17 +147,6 @@ public class MainAct extends AppCompatActivity {
         }, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
     }
 
-//    private void installingProcess() {
-//        new Handler().postDelayed(new Runnable() {
-//            @Override
-//            public void run() {
-//                installApk(MainAct.this);
-//            }
-//        },15000);
-//
-//    }
-
-
     public void installApk(Context context, String subPath) {
         String filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) +"/"+ subPath +".apk";
         File file = new File(filePath);
@@ -167,6 +157,7 @@ public class MainAct extends AppCompatActivity {
             } else {
                 uri = Uri.fromFile(file);
             }
+            Toast.makeText(context, "Installing", Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(uri, "application/vnd.android.package-archive");
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
