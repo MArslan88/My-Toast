@@ -30,12 +30,18 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.util.UUID;
 
 public class MainAct extends AppCompatActivity {
+    public static final String VERSION = "version_";
     Button update_btn;
     TextView textView;
     String versionName;
     int myVersionCode;
+
+    File vmlocal_folder;
+    Handler handler = new Handler();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,7 +95,7 @@ public class MainAct extends AppCompatActivity {
                             System.out.println("APK URL: " + apkUrl);
                             if(myVersionCode < versionCode){
                                 Toast.makeText(MainAct.this, "Update is Available", Toast.LENGTH_SHORT).show();
-                                downloadApk(MainAct.this, apkUrl, "version_3.0");
+                                deleteSameApk(apkUrl, VERSION + versionName, versionName);
 
                             }else {
                                 Toast.makeText(MainAct.this, "Your app is already updated", Toast.LENGTH_SHORT).show();
@@ -110,15 +116,38 @@ public class MainAct extends AppCompatActivity {
         queue.add(stringRequest);
     }
 
+    private void deleteSameApk(String url, String subPath, String versionName) {
+        vmlocal_folder = new File(Environment.getExternalStorageDirectory().getPath() + "/Download");
+        if (vmlocal_folder.isDirectory()) {
+            String[] children = vmlocal_folder.list();
+            if(children != null){
+                for (int i = 0; i < children.length; i++) {
+                    if (children[i].contains(VERSION)) {
+                        new File(vmlocal_folder, children[i]).delete();
+                    }
+                }
+            }
+        } else {
+            vmlocal_folder.mkdir();
+        }
+        // download handler
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                downloadApk(MainAct.this, url, subPath);
+            }
+        }, 2000);
+    }
 
 
     public void downloadApk(Context context, String url, String subPath) {
+        String randomId = UUID.randomUUID().toString();
         Toast.makeText(context, "Downloading", Toast.LENGTH_SHORT).show();
 //        String url = "https://github.com/MArslan88/My-Toast/raw/main/downloads/apks/L3-Craft-MenuBoard-V4.apk";
         DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
         request.setTitle("Downloading APK");
         request.setDescription("Downloading the updated APK.");
-        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, subPath + ".apk");
+        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, randomId + "_"+subPath + ".apk");
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
 
         DownloadManager downloadManager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
@@ -137,7 +166,7 @@ public class MainAct extends AppCompatActivity {
                         int columnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
                         if (DownloadManager.STATUS_SUCCESSFUL == cursor.getInt(columnIndex)) {
                             // Download is complete, install the APK
-                            installApk(context, subPath);
+                            installApk(context, randomId + "_"+subPath);
                         } else {
                             Toast.makeText(context, "Download failed", Toast.LENGTH_SHORT).show();
                         }
