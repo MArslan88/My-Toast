@@ -57,10 +57,6 @@ public class MainAct extends AppCompatActivity {
         update_btn.setOnClickListener(view -> {
             updateApk();
         });
-
-
-
-
     }
 
     private void appVersionCode() {
@@ -95,7 +91,8 @@ public class MainAct extends AppCompatActivity {
                             System.out.println("APK URL: " + apkUrl);
                             if(myVersionCode < versionCode){
                                 Toast.makeText(MainAct.this, "Update is Available", Toast.LENGTH_SHORT).show();
-                                deleteSameApk(apkUrl, VERSION + versionName, versionName);
+                                downloadApk(MainAct.this, apkUrl, VERSION + versionName);
+
 
                             }else {
                                 Toast.makeText(MainAct.this, "Your app is already updated", Toast.LENGTH_SHORT).show();
@@ -116,28 +113,6 @@ public class MainAct extends AppCompatActivity {
         queue.add(stringRequest);
     }
 
-    private void deleteSameApk(String url, String subPath, String versionName) {
-        vmlocal_folder = new File(Environment.getExternalStorageDirectory().getPath() + "/Download");
-        if (vmlocal_folder.isDirectory()) {
-            String[] children = vmlocal_folder.list();
-            if(children != null){
-                for (int i = 0; i < children.length; i++) {
-                    if (children[i].contains(VERSION)) {
-                        new File(vmlocal_folder, children[i]).delete();
-                    }
-                }
-            }
-        } else {
-            vmlocal_folder.mkdir();
-        }
-        // download handler
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                downloadApk(MainAct.this, url, subPath);
-            }
-        }, 2000);
-    }
 
 
     public void downloadApk(Context context, String url, String subPath) {
