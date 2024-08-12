@@ -3,6 +3,7 @@ package com.mhdarslan.mytoast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 
+import android.Manifest;
 import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -33,6 +34,7 @@ import java.io.File;
 import java.util.UUID;
 
 public class MainAct extends AppCompatActivity {
+    public static final int REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION = 502;
     public static final String VERSION = "version_";
     Button update_btn;
     TextView textView;
@@ -55,8 +57,18 @@ public class MainAct extends AppCompatActivity {
         textView.setText("Version: " + versionName);
 
         update_btn.setOnClickListener(view -> {
-            updateApk();
+            if(checkPermission()){
+                updateApk();
+            }
         });
+    }
+
+    private boolean checkPermission() {
+        if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION);
+            return false;
+        }
+        return true;
     }
 
     private void appVersionCode() {
