@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -16,6 +17,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,6 +28,8 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.mhdarslan.mytoast.download.DownloadDialog;
+import com.mhdarslan.mytoast.download.VideoDownloadManager;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -43,7 +47,8 @@ public class MainAct extends AppCompatActivity {
 
     File vmlocal_folder;
     Handler handler = new Handler();
-
+    int dl_progress;
+    int bytes_total;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,8 +108,21 @@ public class MainAct extends AppCompatActivity {
                             System.out.println("APK URL: " + apkUrl);
                             if(myVersionCode < versionCode){
                                 Toast.makeText(MainAct.this, "Update is Available", Toast.LENGTH_SHORT).show();
-                                downloadApk(MainAct.this, apkUrl, VERSION + versionName);
 
+                                //downloadApk(MainAct.this, apkUrl, VERSION + versionName);
+                                VideoDownloadManager videoDownloadManager = new VideoDownloadManager(MainAct.this, apkUrl, VERSION + versionName);
+                                videoDownloadManager.execute();
+                                videoDownloadManager.setVideoDownloadListener(new VideoDownloadManager.onVideoListener() {
+                                    @Override
+                                    public void onVideoDownloadSuccess(String subPath,String randomId) {
+                                        installApk(MainAct.this,randomId + "_"+subPath);
+                                        Toast.makeText(MainAct.this, "downloaded successfully", Toast.LENGTH_SHORT).show();
+                                    }
+                                    @Override
+                                    public void onVideoDownloadFail(String videoType, boolean onlyOneVideoDownload) {
+                                        Toast.makeText(MainAct.this, "Apk failed to download", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
 
                             }else {
                                 Toast.makeText(MainAct.this, "Your app is already updated", Toast.LENGTH_SHORT).show();
@@ -125,9 +143,34 @@ public class MainAct extends AppCompatActivity {
         queue.add(stringRequest);
     }
 
+    public void installApk(Context context, String subPath) {
+        String filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) +"/"+ subPath +".apk";
+
+        File file = new File(filePath);
+        if (file.exists()) {
+            Uri uri;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                uri = FileProvider.getUriForFile(context, context.getPackageName() + ".provider", file);
+            } else {
+                uri = Uri.fromFile(file);
+            }
+            Toast.makeText(context, "Installing", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, "application/vnd.android.package-archive");
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            context.startActivity(intent);
+        } else {
+            Toast.makeText(context, "Downloaded APK file not found", Toast.LENGTH_SHORT).show();
+        }
+    }
 
 
     public void downloadApk(Context context, String url, String subPath) {
+
+        DownloadDialog downloadDialog = new DownloadDialog(context);
+        downloadDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        downloadDialog.show();
+
         String randomId = UUID.randomUUID().toString();
         Toast.makeText(context, "Downloading", Toast.LENGTH_SHORT).show();
 //        String url = "https://github.com/MArslan88/My-Toast/raw/main/downloads/apks/L3-Craft-MenuBoard-V4.apk";
@@ -150,36 +193,66 @@ public class MainAct extends AppCompatActivity {
                     query.setFilterById(downloadId);
                     Cursor cursor = downloadManager.query(query);
                     if (cursor.moveToFirst()) {
-                        int columnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
-                        if (DownloadManager.STATUS_SUCCESSFUL == cursor.getInt(columnIndex)) {
+
+
+
+                        int status = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+                        int bytes_downloaded = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR);
+                        long fileSizeBytes = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES);
+                        long downloadedBytes = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR);
+
+                        Log.d("MyApp","status "+status);
+                        Log.d("MyApp","bytes downloaded "+bytes_downloaded);
+                        Log.d("MyApp","fileSizeBytes"+fileSizeBytes);
+                        Log.d("MyApp","downloaded bytes"+downloadedBytes);
+                        if (DownloadManager.STATUS_SUCCESSFUL == cursor.getInt(status)) {
                             // Download is complete, install the APK
-                            installApk(context, randomId + "_"+subPath);
+                            downloadDialog.dismiss();
+                            //installApk(context, randomId + "_"+subPath);
                         } else {
+                            downloadDialog.dismiss();
                             Toast.makeText(context, "Download failed", Toast.LENGTH_SHORT).show();
                         }
+
+                        //@SuppressLint("Range") int status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS));
+                        if (status == DownloadManager.STATUS_RUNNING){
+
+                            if (fileSizeBytes > 0) {
+//                            // Convert bytes to megabytes
+                                double fileSizeMB = (double) fileSizeBytes / (1024 * 1024);
+                                double downloadedMB = (double) downloadedBytes / (1024 * 1024);
+                                String fileSizeText = String.format("%.2f MB / %.2f MB ", downloadedMB, fileSizeMB);
+                                Log.d("MyApp","total size and downloaded size "+fileSizeText);
+                                downloadDialog.showFileSize(fileSizeText);
+                            }
+                        }
+
+                        //when video paused dismiss the dialog
+                        if (status == DownloadManager.STATUS_PAUSED){
+                            downloadDialog.videoPausedWarnTxt("Downloading Failed");
+                            //onVideoListener.onVideoDownloadFail(videoType, onlyOneVideoDownload);
+                            downloadDialog.dismiss();
+                            Log.d("MyApp","status downloading paused ");
+                        }
+
+                        // when video failed dismiss the dialog
+                        if (status == DownloadManager.STATUS_FAILED){
+                            downloadDialog.videoPausedWarnTxt("Downloading Failed");
+                            downloadDialog.dismiss();
+                            //onVideoListener.onVideoDownloadFail(videoType, onlyOneVideoDownload);
+                            Log.d("MyApp","status downloading failed ");
+                        }
+
+
+                        if (bytes_total != 0) {
+                            dl_progress = (int) ((bytes_downloaded * 100l) / bytes_total);
+                        }
+                        downloadDialog.updateProgress(dl_progress);
+                        downloadDialog.updateVideoDownload(dl_progress + "%");
                     }
                 }
             }
         }, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
     }
 
-    public void installApk(Context context, String subPath) {
-        String filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) +"/"+ subPath +".apk";
-        File file = new File(filePath);
-        if (file.exists()) {
-            Uri uri;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                uri = FileProvider.getUriForFile(context, context.getPackageName() + ".provider", file);
-            } else {
-                uri = Uri.fromFile(file);
-            }
-            Toast.makeText(context, "Installing", Toast.LENGTH_SHORT).show();
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(uri, "application/vnd.android.package-archive");
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            context.startActivity(intent);
-        } else {
-            Toast.makeText(context, "Downloaded APK file not found", Toast.LENGTH_SHORT).show();
-        }
-    }
 }
